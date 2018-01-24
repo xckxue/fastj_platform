@@ -1,0 +1,99 @@
+<script type="text/javascript">
+    /*<![CDATA[*/
+    $(document).ready(function() {
+
+        //要设置的用户
+        var user_record = $('#user_dataList').datagrid('getSelected');
+        var userId = user_record.userId;
+
+        $('#realte_role_dataList').datagrid({
+            fit : true,
+            toolbar:relate_role_tb,
+            width:'100%',
+            height:'100%',
+            url:'/user/getUserRoleList',
+            loadMsg:'数据加载中,请稍后……',
+            selectOnCheck : true,//选择行则选择checkbox
+            nowrap:true,
+            striped: true,
+            rownumbers:true,
+            fitColumns:true,
+            pagination: true,
+            showFooter:true,
+            pageSize:20,
+            pageList:[20,30,50],
+            queryParams: {
+                userId: userId
+            },
+            columns:[[
+                {field: 'ck', checkbox: true},
+                {field:'roleId',title:'角色id',align:'center', width:120},
+                {field:'name',title:'角色名称',align:'center', width:120},
+                {field:'remark',title:'角色备注',align:'center', width:120},
+                {field:'state',title:'角色状态', formatter: function (value, row, index) {
+                    if(value != -1){
+                        return "<font color='red'>已设置</font>";
+                    }else{
+                        return "未设置";
+                    }
+                }},
+                {field:'createtime',title:'角色创建时间',align:'center', width:120}
+            ]]
+        });
+
+        $("#relate_role_query_btn").click(function(){
+            var user_record = $('#user_dataList').datagrid('getSelected');
+            $('#realte_role_dataList').datagrid('load',{userId:user_record.userId});
+        });
+
+        $("#realte_role_add_btn,#realte_role_del_btn").click(function(){
+            var records = $('#realte_role_dataList').datagrid('getSelections');
+            if(records.length == 0){
+                $.messager.alert('提示','请选择要设置的行!','info');
+                return false;
+            }
+
+            var action = $(this).attr("action");
+
+            var roleIdArray = [];
+            records.forEach(function(val,index,arr){
+                roleIdArray.push(val.roleId);
+            });
+
+            var userRole = {};
+            userRole.userId = userId;
+            userRole.action = action;
+            userRole.roles = roleIdArray;
+
+            $.ajax({
+                type: "POST",
+                url: "user/relateRole",
+                data:JSON.stringify(userRole),
+                contentType : 'application/json;charset=utf-8',
+                success: function(msg){
+                    if(msg.retnCode == '0000'){
+                        $('#realte_role_dataList').datagrid('reload');
+                    }else{
+                        $.messager.alert('提示',msg.retnMessage,'info');
+                    }
+                }
+            });
+        });
+    });
+    /*]]>*/
+</script>
+
+<div class="easyui-layout" data-options="fit:true,border:false">
+    <div data-options="region:'center',fit:true,border:false">
+        <table id="realte_role_dataList"></table>
+    </div>
+</div>
+
+<div id="relate_role_tb" class="toolbar" style="display: none;">
+    <div class="tb_qry"></div>
+    <div class="tb_btn">
+        <a href="javascript:void(0)" class="easyui-linkbutton" plain="true" iconCls="icon-add" action="add" id="realte_role_add_btn" shiro:hasPermission="user/manager">关联角色</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" plain="true" iconCls="icon-remove" action="del" id="realte_role_del_btn" shiro:hasPermission="user/manager">取消关联</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" plain="true" iconCls="icon-reload" id="relate_role_query_btn">刷新</a>
+    </div>
+</div>

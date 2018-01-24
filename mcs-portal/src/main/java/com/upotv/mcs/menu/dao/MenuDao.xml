@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.upotv.mcs.menu.dao.MenuDao">
+
+    <resultMap id="MenuMap" type="com.upotv.mcs.menu.entity.Menu">
+        <result property="menuId" column="menu_id"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="name" column="name"/>
+        <result property="path" column="path"/>
+        <result property="remark" column="remark"/>
+        <result property="priority" column="priority"/>
+        <result property="isEnable" column="is_enable"/>
+        <result property="isAdmin" column="is_admin"/>
+        <result property="updatetime" column="update_time"/>
+        <result property="createtime" column="create_time"/>
+        <result property="privId" column="privId"/>
+        <result property="privName" column="privName"/>
+        <result property="iconCls" column="icon"/>
+    </resultMap>
+
+    <select id="getMenuList" resultMap="MenuMap">
+        SELECT menu.*,GROUP_CONCAT(priv.`priv_name`) privName,GROUP_CONCAT(priv.`priv_id`) privId FROM mcs_menu menu
+            JOIN `mcs_menu_priv` priv ON menu.`menu_id` = priv.`menu_id`
+        where parent_id = #{parentId}
+        GROUP BY menu.`menu_id`
+        ORDER BY priority
+    </select>
+
+    <select id="getMenuByName" resultMap="MenuMap">
+        SELECT * from mcs_menu WHERE name = #{name}
+    </select>
+
+    <select id="getMenuById" resultMap="MenuMap">
+        SELECT * from mcs_menu WHERE menu_id = #{name}
+    </select>
+
+    <select id="getChildMenuById" resultMap="MenuMap">
+        SELECT * from mcs_menu WHERE parent_id = #{0} and menu_id != #{1} ORDER BY priority
+    </select>
+
+    <insert id="insert" parameterType="com.upotv.mcs.menu.entity.MenuVo">
+        insert into mcs_menu (parent_id,name,path,priority,is_enable,is_admin,icon,remark,update_time,create_time)
+        values (#{parentid},#{name},#{path},#{priority},#{isEnable},#{isAdmin},#{iconCls},#{remark},now(),now())
+        <selectKey resultType="int" keyProperty="menuid">
+            select max(menu_id) menuid from mcs_menu
+        </selectKey>
+    </insert>
+    
+    <update id="update" parameterType="com.upotv.mcs.menu.entity.MenuVo">
+        update mcs_menu
+        <set>
+            name = #{name},
+            path = #{path},
+            remark = #{remark},
+            is_admin = #{isAdmin},
+            priority = #{priority},
+            is_enable = #{isEnable},
+            <if test="iconCls != null">icon = #{iconCls},</if>
+            update_time = now()
+        </set>
+        where menu_id = #{menuid}
+    </update>
+
+    <update id="updatePosition">
+        update mcs_menu set parent_id = #{0},update_time = now() where menu_id = #{1}
+    </update>
+
+    <update id="updateOrder">
+        <foreach collection="params" item="item" index="index"  open="" separator=";" close="">
+            update mcs_menu set priority = #{item.rowno} where menu_id = #{item.menuId}
+        </foreach>
+    </update>
+
+    <select id="checkMenu" resultType="Integer">
+        SELECT COUNT(0) FROM mcs_menu WHERE parent_id = #{menuid}
+    </select>
+
+    <delete id="delete" parameterType="int">
+        DELETE  from mcs_menu where menu_id = #{menuid}
+    </delete>
+
+   <delete id="deleteMenuPriv">
+       DELETE  from mcs_menu_priv where menu_id  = #{menuid}
+   </delete>
+
+    <delete id="deletePermission">
+        DELETE  from mcs_permission where menu_id = #{menuid}
+    </delete>
+
+    <insert id="insertMenuPriv" parameterType="com.upotv.mcs.menu.entity.MenuPrivVo">
+        insert into mcs_menu_priv (menu_id,priv_id,priv_name,create_time) values  (#{menuid},#{priv_id},#{priv_name},now())
+    </insert>
+</mapper>

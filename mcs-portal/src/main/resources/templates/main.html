@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+
+<head th:include="head"></head>
+<title>集成播控平台V4</title>
+
+<script th:inline="javascript">
+    var userName =  [[${session.session_user.userName}]];
+/*<![CDATA[*/
+    $(document).ready(function() {
+        $.ajax({
+            type: 'POST',
+            dataType: "json",
+            url:'/getMenu?pid=-1',
+            success: function(data){
+                $.each(data,function(i,n){
+                    var flag = false;
+                    if(i == 0){
+                        flag = true;
+                    }
+                    $('#menu').accordion('add',{
+                        title: n.text,
+                        selected: flag,
+                        iconCls : n.iconCls,
+                        content:'<div style="padding:10px"><ul id="tree'+n.id+'"></ul></div>'
+                    });
+
+                    $("#tree" + n.id).tree({
+                        animate:true,
+                        lines:false,
+                        url: '/getMenu?pid=' + n.id,
+                        onBeforeExpand:function(node,param){
+                            $("#tree" + n.id).tree('options').url = "/getMenu?pid=" + node.id;
+                        },
+                        onClick:function(node){
+                            if(node.attributes.url != ''){
+                                var opts = {
+                                    title : node.text,
+                                    border : false,
+                                    closable : true,
+                                    fit : true,
+                                    iconCls : node.iconCls
+                                };
+                                var url = node.attributes.url;
+                                if (url) {
+                                    addIframe(node.text,url);
+                                }
+                            }
+                        }
+                    });
+                });
+            }
+        });
+
+        function addIframe(title, url) {
+            var t = $('#tabs');
+            if (t.tabs('exists', title)) {
+                t.tabs('select', title);
+            } else {
+                var content = '未实现';
+                if (url){
+                    content = '<iframe scrolling="no" frameborder="0"  src="'+url+'" style="width:100%;height:100%;"></iframe>';
+                }
+                $('#tabs').tabs('addIframeTab', {
+                    tab:{
+                        title:title,
+                        closable:true
+                    },
+                    iframe:{
+                        src:url,
+                        delay:'fast',
+                        message:'加载中,请稍后...'
+                    }
+                });
+            }
+        }
+    });
+
+    function logout(){
+        $.messager.confirm('提示','确定要退出?',function(r){
+            if (r){
+                window.location.href='/logout';
+            }
+        });
+    }
+
+    function changepwd(){
+        var $dialog = $('#changepwd_dialog');
+        $("#userName").val(userName);
+        $dialog.dialog({
+            title:'修改密码',
+            modal: true,
+            closed: false,
+            width:450,
+            height:200,
+            onClose : function() {
+                $(this).form('clear');
+            },
+            buttons:[{
+                text:'保存',
+                iconCls:'icon-ok',
+                handler:function(){
+                    $.messager.progress({title:'正在执行'});
+                    $('#changepwd_form').form('submit',{
+                        url:basePath+'user/changepwd',
+                        onSubmit:function(param){
+                            var isValid = $(this).form('enableValidation').form('validate');
+                            if (!isValid){
+                                $.messager.progress('close');
+                                return false;
+                            }
+                        },
+                        success: function (data) {
+                            data = $.parseJSON(data);
+                            if(data.retnCode == '0000'){
+                                $dialog.dialog('close');
+                                $.messager.alert('提示',"修改成功,点击确定重新登录",'info',function(){
+                                    window.location.href='/logout';
+                                });
+                            }else{
+                                $.messager.alert('提示',data.retnMessage,'error');
+                            }
+                            $.messager.progress('close');
+                        }
+                    });
+                }
+            },{
+                text:'关闭',
+                iconCls:'icon-no',
+                handler:function(){
+                    $dialog.dialog('close');
+                }
+            }]
+        });
+        $dialog.show();
+    }
+
+/*]]>*/
+</script>
+
+<body>
+    <div id="main_layout" class="easyui-layout" data-options="fit:true,border:false">
+        <div data-options="region:'north'" class="header">
+            <div class="topleft">
+                <a href="#" target="_parent"><img src="images/logo.png" title="系统首页" /></a>
+            </div>
+            <div class="topright" style="width: 267px">
+                <div style="margin: 60px 0 0 20px;color: #fafafa;">
+                <span style="float: left;display: block"><shiro:principal property="name" /></span>
+                <a href="javascript:void(0)" onclick="logout()" style="float: left;padding-left: 20px;color: #fafafa;">安全退出</a>
+                <a href="javascript:void(0)" onclick="changepwd()" style="float: left;padding-left: 20px;color: #fafafa;">修改密码</a>
+                </div>
+            </div>
+        </div>
+        <div data-options="region:'west'" title="菜单" style="width:200px;">
+            <div id="menu" class="easyui-accordion"  data-options="fit:true,border:false"> </div>
+        </div>
+
+        <div data-options="region:'center',iconCls:'icon-ok'">
+            <div id="tabs" class="easyui-tabs" data-options="fit:true,border:false">
+            </div>
+        </div>
+    </div>
+
+    <div id="changepwd_dialog" class="dialog" data-options="modal:true">
+        <form id="changepwd_form" method="post">
+            <div class="inp">
+                <div class="title">原密码</div>
+                <div class="text"><input name="oldPassword" class="easyui-passwordbox" data-options="required:true"/></div>
+            </div>
+            <div class="inp">
+                <div class="title">新密码</div>
+                <div class="text"><input id="password" name="password" class="easyui-passwordbox" data-options="required:true,validType:'isPwd'"/></div>
+            </div>
+            <div class="inp">
+                <div class="title">确认密码</div>
+                <div class="text"><input id="repassword"  name="repassword" class="easyui-passwordbox" validType="equalTo['#password']" data-options='required:true'/></div>
+            </div>
+            <input id="userName" name="userName" type="hidden" />
+        </form>
+    </div>
+</body>
+
+</html>

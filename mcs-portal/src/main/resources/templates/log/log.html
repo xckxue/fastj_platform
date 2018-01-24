@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+
+<head th:include="head">
+    <title>集成播控平台V4</title>
+</head>
+
+<script type="text/javascript">
+    /*<![CDATA[*/
+    $(document).ready(function() {
+        $('#log_dataList').datagrid({
+            fit : true,
+            toolbar:'#log_tb',
+            width:'100%',
+            height:'100%',
+            url:'/log/getLogListPage',
+            loadMsg:'数据加载中,请稍后……',
+            singleSelect: true,
+            autoRowHeight:false,
+            pagination: true,
+            nowrap:true,
+            striped: true,
+            rownumbers:true,
+            //fitColumns:true,
+            showFooter:true,
+            pageSize:20,
+            pageList:[20,30,50],
+            columns:[[
+                {field:'logid',title:'',align:'center', width:50},
+                {field:'username',title:'操作人',align:'center', width:80},
+                {field:'path',title:'请求路径', width:250},
+                {field:'param',title:'请求参数', width:300,editor:'text'},
+                {field:'ip',title:'ip地址',align:'center', width:80},
+                {field:'duration',title:'执行时间',align:'center', width:120},
+                {field:'status',title:'状态',align:'center', width:120},
+                {field:'remark',title:'提示信息',align:'center', width:300,editor:'text'},
+                {field:'createTime',title:'操作时间',align:'center', width:200}
+            ]]
+        });
+
+        $("#log_query_btn").click(function(){
+            var params = $('#log_qry_form').serializeObject();
+            $('#log_dataList').datagrid('load',params);
+        });
+
+        //查看信息
+        $("#log_view_btn").click(function(){
+            var record = $('#log_dataList').datagrid('getSelected');
+            if(!record){
+                $.messager.alert('提示','请选择要查看的行!','info');
+                return false;
+            }
+            $("#log_form").form('load',record);
+            var $dialog = $('#log_dialog');
+            $dialog.dialog({
+                title:'查看详情',
+                modal: true,
+                closed: false,
+                width:450,
+                onClose : function() {
+                    $(this).form('clear');
+                },
+                buttons:[{
+                    text:'关闭',
+                    iconCls:'icon-no',
+                    handler:function(){
+                        $dialog.dialog('close');
+                    }
+                }]
+            });
+            $dialog.show();
+        });
+    });
+    /*]]>*/
+</script>
+
+<body>
+    <div class="easyui-layout" data-options="fit:true,border:false">
+        <div data-options="region:'center',fit:true,border:false">
+            <table id="log_dataList"></table>
+        </div>
+    </div>
+
+    <div id="log_tb" class="toolbar" >
+        <div class="tb_qry">
+            <form id="log_qry_form">
+                <div class="inp">
+                    <div class="title">用户id</div>
+                    <div class="text"><input name="username" class="easyui-textbox" /></div>
+                </div>
+                <div class="inp">
+                    <div class="title">状态</div>
+                    <div class="text"> <input name="status" class="easyui-textbox"/></div>
+                </div>
+                <div class="inp">
+                    <div class="title">请求路径</div>
+                    <div class="text"><input name="path" class="easyui-textbox"/></div>
+                </div>
+                <div class="inp">
+                    <div class="title">创建时间</div>
+                    <div class="text">
+                        <input class="easyui-datetimebox" name="startTime" readonly="readonly"/>
+                    </div>
+                </div>
+                <div class="inp">
+                    <div class="title">至</div>
+                    <div class="text">
+                        <input class="easyui-datetimebox" name="endTime" />
+                    </div>
+                </div>
+                <div class="qrybtn">
+                    <a href="#" class="easyui-linkbutton" plain="true" iconCls="icon-search" id="log_query_btn">查询</a>
+                </div>
+            </form>
+        </div>
+        <div class="clear"></div>
+        <div class="tb_btn">
+            <a href="javascript:void(0)" class="easyui-linkbutton" plain="true" iconCls="icon-edit" id="log_view_btn">查看</a>
+        </div>
+    </div>
+
+    <div id="log_dialog" style="display:none;width:400px;height:450px;padding:15px 40px">
+        <form id="log_form" method="post">
+            <div class="inp">
+                <div class="title">请求路径</div>
+                <div class="text">
+                    <input name="path" data-options="multiline:true"  class="easyui-textbox" style="width:100%;height:50px"/>
+                </div>
+            </div>
+            <div class="inp">
+                <div class="title">请求参数</div>
+                <div class="text">
+                    <input name="param" data-options="multiline:true"  class="easyui-textbox" style="width:100%;height:100px"/>
+                </div>
+            </div>
+            <div class="inp">
+                <div class="title">提示信息</div>
+                <div class="text">
+                    <input name="remark" data-options="multiline:true"  class="easyui-textbox" style="width:100%;height:100px"/>
+                </div>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

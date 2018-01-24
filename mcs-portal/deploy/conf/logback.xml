@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <Pattern>%d{HH:mm:ss.SSS} %-5level [%thread]%logger{36}.%method: ->%msg%n</Pattern>
+        </encoder>
+    </appender>
+    <appender name="file" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${env.logback.path}/current.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${env.logback.path}/%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>${env.logback.history}</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread]%logger{36}.%method: ->%msg%n</Pattern>
+        </encoder>
+    </appender>
+
+    <root level="${env.logback.root.level}">
+        <!--<appender-ref ref="stdout"/>-->
+        <appender-ref ref="file"/>
+    </root>
+    <logger name="com.zaxxer.hikari" level="warn"/>
+    <logger name="org.apache.zookeeper" level="warn"/>
+</configuration>

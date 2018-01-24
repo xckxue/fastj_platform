@@ -1,0 +1,14 @@
+<script th:inline="javascript">
+    var roleId = [[${roleId}]];
+
+    /*<![CDATA[*/
+    $(function(){
+        $('#tt').tree({
+            checkbox:true,
+            url:basePath+'/role/getRoleMenu?pid=-1&roleId='+roleId
+        });
+    });
+    /*]]>*/
+</script>
+
+<ul id="tt"></ul>

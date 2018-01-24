@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.upotv.mcs.dict.dao.DictDao">
+
+    <resultMap id="McsCodeMap" type="com.upotv.mcs.dict.entity.McsCode">
+        <result property="id" column="id"/>
+        <result property="codeType" column="code_type"/>
+        <result property="codeId" column="code_id"/>
+        <result property="codeName" column="code_name"/>
+        <result property="remark" column="remark"/>
+        <result property="priority" column="priority"/>
+        <result property="isEnable" column="is_enable"/>
+        <result property="updatetime" column="updatetime"/>
+        <result property="createtime" column="createtime"/>
+    </resultMap>
+
+    <select id="getDictListPage" resultMap="McsCodeMap">
+        SELECT * from mcs_code <include refid="dictListPageWhere"/> ORDER BY code_type,priority
+    </select>
+
+    <sql id="dictListPageWhere">
+        where 1=1
+        <if test="codeType != null and  codeType!= ''"> and code_type = #{codeType} </if>
+    </sql>
+
+    <select id="getAllDict" resultMap="McsCodeMap">
+        SELECT * from mcs_code where is_enable = 1 ORDER BY code_type,priority
+    </select>
+
+    <select id="getDictByType" resultMap="McsCodeMap" parameterType="String">
+        SELECT code_type,code_id,code_name,remark,priority,is_enable from mcs_code where code_type = #{codeType} and is_enable = 1 ORDER BY priority
+    </select>
+
+    <select id="checkDictByTypeAndId" resultType="int">
+        SELECT COUNT(0) FROM mcs_code WHERE code_type = #{codeType} AND code_id = #{codeId}
+        <if test="id != null and  id!= ''"> and id not in(#{id})</if>
+    </select>
+
+    <insert id="add">
+        insert into mcs_code
+        (code_type,code_id,code_name,remark,priority,is_enable,updatetime,createtime)
+        values
+        (#{codeType},#{codeId},#{codeName},#{remark},#{priority},#{isEnable},now(),now())
+    </insert>
+
+    <update id="update">
+        update mcs_code set
+        code_type = #{codeType},
+        code_id = #{codeId},
+        code_name = #{codeName},
+        remark = #{remark},
+        priority = #{priority},
+        is_enable = #{isEnable},
+        updatetime = now()
+        where id = #{id}
+    </update>
+
+    <delete id="del">
+        DELETE  from mcs_code where id = #{id}
+    </delete>
+
+    <resultMap id="McsCodeTypeMap" type="com.upotv.mcs.dict.entity.McsCodeType">
+        <result property="codeType" column="code_type"/>
+    </resultMap>
+
+    <select id="getCodeType" resultMap="McsCodeTypeMap">
+        SELECT DISTINCT code_type FROM mcs_code
+    </select>
+
+    <select id="getMtypeList" resultMap="McsCodeMap" parameterType="list">
+        SELECT * FROM mcs_code WHERE code_type = 'movietype'
+        <if test="list != null and list.size > 0">
+            ORDER BY (field(code_id,
+            <foreach item="item" index="index" collection="list" open="" separator="," close="">
+                #{item}
+            </foreach>
+            )) DESC
+        </if>
+    </select>
+
+</mapper>

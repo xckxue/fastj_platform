@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+
+<head th:include="head"></head>
+
+<script type="application/javascript">
+    /*<![CDATA[*/
+
+    function enableDnd(t){
+        var nodes = t.treegrid('getPanel').find('tr[node-id]');
+        nodes.find('span.tree-hit').bind('mousedown.treegrid',function(){
+            return false;
+        });
+        nodes.draggable({
+            disabled:false,
+            revert:true,
+            cursor:'pointer',
+            proxy: function(source){
+                var p = $('<div class="tree-node-proxy tree-dnd-no"></div>').appendTo('body');
+                p.html($(source).find('.tree-title').html());
+                p.hide();
+                return p;
+            },
+            deltaX: 15,
+            deltaY: 15,
+            onBeforeDrag:function(){
+                $(this).next('tr.treegrid-tr-tree').find('tr[node-id]').droppable({accept:'no-accept'});
+            },
+            onStartDrag:function(){
+                $(this).draggable('proxy').css({
+                    left:-10000,
+                    top:-10000
+                });
+            },
+            onDrag:function(e){
+                $(this).draggable('proxy').show();
+                this.pageY = e.pageY;
+            },
+            onStopDrag:function(){
+                $(this).next('tr.treegrid-tr-tree').find('tr[node-id]').droppable({accept:'tr[node-id]'});
+            }
+        }).droppable({
+            accept:'tr[node-id]',
+            onDragOver:function(e,source){
+                var pageY = source.pageY;
+                var top = $(this).offset().top;
+                var bottom = top + $(this).outerHeight();
+                $(source).draggable('proxy').removeClass('tree-dnd-no').addClass('tree-dnd-yes');
+                $(this).removeClass('row-append row-top row-bottom');
+                if (pageY > top + (bottom - top) / 2){
+                    if (bottom - pageY < 5){
+                        $(this).addClass('row-bottom');
+                    } else {
+                        $(this).addClass('row-append');
+                    }
+                } else {
+                    if (pageY - top < 5){
+                        $(this).addClass('row-top');
+                    } else {
+                        $(this).addClass('row-append');
+                    }
+                }
+            },
+            onDragLeave:function(e,source){
+                $(source).draggable('proxy').removeClass('tree-dnd-yes').addClass('tree-dnd-no');
+                $(this).removeClass('row-append row-top row-bottom');
+            },
+            onDrop:function(e,source){
+                var action,point;
+                if ($(this).hasClass('row-append')){
+                    action = 'append';
+                } else {
+                    action = 'insert';
+                    point = $(this).hasClass('row-top') ? 'top' : 'bottom';
+                }
+                $(this).removeClass('row-append row-top row-bottom');
+                alert(action+":"+point);
+                // your logic code here
+                // do append or insert action and reload the treegrid data
+            }
+        });
+    }
+    $(function () {
+
+        var isAdminDict = [{codeId:"1",codeName:"是"},{codeId:"0",codeName:"否"}];
+        var isEnableDict = [{codeId:"1",codeName:"有效"},{codeId:"0",codeName:"无效"}];
+        var permissionDict = upotv.biz.Dict.getDict("permission",true);
+
+        $('#menu_treeList').treegrid({
+            fit : true,
+            toolbar:'#menu_tb',
+            url: basePath+"menu/menuListPage?parentId=-1",
+            idField: 'id',
+            treeField: 'name',
+            rownumbers: true,
+            collapsible: true,
+            animate:false,
+            columns:[[
+                {title:"编号",field:'id',hidden:true},
+                {title:"菜单名称",field:'name',width:280},
+                {title:"菜单地址",field:'path',width:100},
+                {title:"排序",field:'priority',align:'center',width:50},
+                {title:"是否有效",field:'isEnable',align:'center',width:80,
+                    formatter : function(value, row, index) {
+                        if(value == 1){
+                            return '有效';
+                        }else{
+                            return '无效';
+                        }
+                    }
+                },
+                {title:"功能",field:'privName',width:200},
+                {title:"管理员菜单",field:'isAdmin',align:'center',width:80,
+                    formatter : function(value, row, index) {
+                        if(value == 1){
+                            return '是';
+                        }else{
+                            return '否';
+                        }
+                    }
+                },
+                {title:"图标",field:'iconCls',hidden:true,width:100},
+                {title:"备注",field:'remark',width:200},
+                {title:"更新时间",field:'updatetime',align:'center',width:180},
+                {title:"创建时间",field:'createtime',align:'center',width:180}
+            ]],
+            onLoadSuccess: function(row){
+                $(this).treegrid('enableDnd', row?row.id:null);
+            },
+            onDrop:function(targetRow,sourceRow,point){
+                //point : top/button(targetRow在sourceRow平级之上/之下)
+                //append(targetRow在sourceRow节点下)
+                var targetId = targetRow.id;
+                var sourceId = sourceRow.id;
+
+                $.ajax({
+                    type: "POST",
+                    url: "menu/order",
+                    data:{point:point,targetId:targetId,sourceId:sourceId},
+                    success: function(msg){
+                        if(msg.retnCode == '0000'){
+                            $('#menu_treeList').treegrid('reload');
+                        }else{
+                            $.messager.alert('提示',msg.retnMessage,'info');
+                        }
+                    }
+                });
+                console.log(targetRow);
+                console.log(sourceRow);
+                console.log(point);
+            }
+
+
+        });
+
+         $("#menu_isAdmin").combobox({
+            valueField: 'codeId',
+            textField: 'codeName',
+            editable:false,
+            data:isAdminDict,
+
+        });
+
+         $("#menu_isEnable").combobox({
+            valueField: 'codeId',
+            textField: 'codeName',
+            editable:false,
+            value:1,
+            data:isEnableDict
+        });
+
+         $("#priv_id").combobox({
+            valueField: 'codeId',
+            textField: 'codeName',
+            editable:false,
+            data:permissionDict
+        });
+
+        $("#insert_menu_btn").bind("click",function () {
+            var record = $('#menu_treeList').treegrid('getSelected');
+
+            var parentId = -1 ;
+            if(record != null){
+                parentId = record.id
+            }
+
+            var $dialog = $('#menu_dialog');
+            $dialog.dialog({
+                title:'增加菜单信息',
+                modal: true,
+                closed: false,
+                width:450,
+                onClose : function() {
+                    $(this).form('clear');
+                },
+                buttons:[{
+                    text:'保存',
+                    iconCls:'icon-ok',
+                    handler:function(){
+                        $.messager.progress({title:'正在执行'});
+                        $('#menu_form').form('submit',{
+                            url:basePath+'menu/insert',
+                            onSubmit:function(param){
+                                param.parentid = parentId;
+                                var isValid = $(this).form('enableValidation').form('validate');
+                                if (!isValid){
+                                    $.messager.progress('close');
+                                    return false;
+                                }
+                            },
+                            success: function (data) {
+                                data = $.parseJSON(data);
+                                if(data.retnCode == '0000'){
+                                        $dialog.dialog('close');
+                                        $('#menu_treeList').treegrid('reload');
+                                }else{
+                                    $.messager.alert('提示',data.retnMessage,'error');
+                                }
+                                $.messager.progress('close');
+                            }
+                        });
+                    }
+                },{
+                    text:'关闭',
+                    iconCls:'icon-no',
+                    handler:function(){
+                        $dialog.dialog('close');
+                    }
+                }]
+            });
+            $dialog.show();
+        });
+
+        $("#update_menu_btn").bind("click",function () {
+            var record = $('#menu_treeList').treegrid('getSelected');
+            if(!record){
+                $.messager.alert('提示',"请选择一条数据执行操作");
+                return false;
+            }
+            $("#menu_form").form('load',record);
+            var $dialog = $('#menu_dialog');
+            $dialog.dialog({
+                title:'修改菜单信息',
+                modal: true,
+                closed: false,
+                width:450,
+                onClose : function() {
+                    $(this).form('clear');
+                },
+                buttons:[{
+                    text:'保存',
+                    iconCls:'icon-ok',
+                    handler:function(){
+                        $.messager.progress({title:'正在执行'});
+                        $('#menu_form').form('submit',{
+                            url:basePath+'menu/update',
+                            onSubmit:function(param){
+                                param.menuid = record.id;
+                                var isValid = $(this).form('enableValidation').form('validate');
+                                if (!isValid){
+                                    $.messager.progress('close');
+                                    return false;
+                                }
+                            },
+                            success: function (data) {
+                                data = $.parseJSON(data);
+                                if(data.retnCode == '0000'){
+                                        $dialog.dialog('close');
+                                        $('#menu_treeList').treegrid('reload');
+                                }else{
+                                    $.messager.alert('提示',data.retnMessage,'error');
+                                }
+                                $.messager.progress('close');
+                            }
+                        });
+                    }
+                },{
+                    text:'关闭',
+                    iconCls:'icon-no',
+                    handler:function(){
+                        $dialog.dialog('close');
+                    }
+                }]
+            });
+            $dialog.show();
+        });
+
+        $("#delete_menu_btn").bind("click",function () {
+            var record = $('#menu_treeList').treegrid('getSelected');
+            if(!record){
+                $.messager.alert('提示',"请选择一条数据执行操作");
+                return false;
+            }
+            $.messager.confirm('提示','确定要删除该菜单吗?',function(result){
+                if (result){
+                    $.ajax({
+                        type: "POST",
+                        url: "menu/delete",
+                        data:{menuid:record.id},
+                        success: function(msg){
+                            if(msg.retnCode == '0000'){
+                                    $('#menu_treeList').treegrid('reload');
+                            }else{
+                                $.messager.alert('提示',msg.retnMessage,'info');
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
+        $("#update_menu_priv_btn").bind("click",function () {
+            var record = $('#menu_treeList').treegrid('getSelected');
+            if (record.priv_id != null) {
+                $('#priv_id').combobox('setValues',record.priv_id.split(','));
+            } else {
+                $('#priv_id').combobox('setValues','');
+            }
+
+            var $dialog = $('#menu_priv_dialog');
+            $dialog.dialog({
+                title:'修改功能信息',
+                modal: true,
+                closed: false,
+                width:450,
+                onClose : function() {
+                    $(this).form('clear');
+                },
+                buttons:[{
+                    text:'保存',
+                    iconCls:'icon-ok',
+                    handler:function(){
+                        $.messager.progress({title:'正在执行'});
+                        $('#menu_priv_form').form('submit', {
+                            url: 'menu/insertMenuPriv',
+                            onSubmit: function (param) {
+                                param.menuid = record.id;
+                                param.priv_id = $('#priv_id').combobox('getValues');
+                                param.priv_name = $('#priv_id').combobox('getText');
+                                var isValid = $(this).form('enableValidation').form('validate');
+                                if (!isValid) {
+                                    $.messager.progress('close');
+                                    return false;
+                                }
+                            },
+                            success: function (data) {
+                                data = $.parseJSON(data);
+                                if (data.retnCode == '0000') {
+                                    $.messager.alert('提示', "修改成功!", 'info', function () {
+                                        $dialog.dialog('close');
+                                        $('#menu_treeList').treegrid('reload');
+                                    });
+                                }
+                                $.messager.progress('close');
+                            }
+                        })
+                    }
+                }]
+            });
+        });
+    });
+
+     /*]]>*/
+</script>
+<body>
+    <div class="easyui-layout" data-options="fit:true,border:false">
+        <div data-options="region:'center',fit:true,border:false">
+            <table id="menu_treeList"></table>
+        </div>
+    </div>
+
+    <div id="menu_tb" class="tb_btn">
+        <div class="tb_qry">
+        </div>
+        <div class="tb_btn">
+            <a href="#" class="easyui-linkbutton" plain="true" data-options="iconCls:'icon-add'" id="insert_menu_btn" >添加菜单</a>
+            <a href="#" class="easyui-linkbutton" plain="true" data-options="iconCls:'icon-edit'" id="update_menu_btn">修改菜单</a>
+            <a href="#" class="easyui-linkbutton" plain="true" data-options="iconCls:'icon-remove'" id="delete_menu_btn" shiro:hasPermission="menu/manager">删除菜单</a>
+            <a href="#" class="easyui-linkbutton" plain="true" data-options="iconCls:'icon-link'" id="update_menu_priv_btn">关联功能</a>
+        </div>
+    </div>
+
+    <div id="menu_dialog" class="dialog" data-options="modal:true">
+        <form id="menu_form" method="post">
+            <div class="inp">
+                <div class="title">菜单名称</div>
+                <div class="text">
+                    <input name="name" class="easyui-textbox" data-options="required:true"/>
+                </div>
+            </div>
+            <div class="inp">
+                <div class="title">菜单地址</div>
+                <div class="text">
+                    <input name="path" class="easyui-textbox"/>
+                </div>
+            </div>
+            <div class="inp">
+                <div class="title">排序</div>
+                <div class="text">
+                    <input name="priority" class="easyui-numberbox" data-options="required:true"/>
+                </div>
+            </div>
+            <div class="inp">
+                <div class="title">是否有效</div>
+                <div class="text">
+                    <select id="menu_isEnable" name="isEnable" data-options="required:true" class="easyui-combobox" panelHeight="auto"></select>
+                </div>
+            </div>
+            <div class="inp">
+                <div class="title">管理员菜单</div>
+                <div class="text">
+                    <select id="menu_isAdmin" name="isAdmin"  data-options="required:true" class="easyui-combobox" panelHeight="auto"></select>
+                </div>
+            </div>
+            <div class="inp">
+                <div class="title">菜单图标</div>
+                <div class="text">
+                    <input name="iconCls" class="easyui-textbox" panelHeight="auto"/>
+                </div>
+            </div>
+            <div class="inp">
+                <div class="title">备注</div>
+                <div class="text">
+                    <input name="remark" class="easyui-textbox"/>
+                </div>
+        </div>
+    </form>
+</div>
+
+<div id="menu_priv_dialog" class="dialog" data-options="modal:true">
+    <form id="menu_priv_form" method="post">
+        <div class="inp">
+            <div class="title">权限列表</div>
+            <div class="text">
+                <select id="priv_id" class="easyui-combobox" data-options="multiple:true,panelHeight:'auto',required:true"></select>
+            </div>
+        </div>
+    </form>
+</div>
+</body>
+
+</html>

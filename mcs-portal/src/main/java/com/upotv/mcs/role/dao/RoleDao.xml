@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.upotv.mcs.role.dao.RoleDao">
+
+    <resultMap id="RoleMap" type="com.upotv.mcs.role.entity.Role">
+        <result property="roleid" column="role_id"/>
+        <result property="name" column="name"/>
+        <result property="remark" column="remark"/>
+        <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+        <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <select id="getRoleList" resultMap="RoleMap">
+        SELECT role_id, name, remark, update_time, create_time from mcs_role <include refid="roleListPageWhere"/>
+    </select>
+
+    <sql id="roleListPageWhere">
+        <where>
+            <if test="name != null and  name!= ''"> name LIKE CONCAT('%',#{name},'%')</if>
+        </where>
+    </sql>
+
+    <select id="getRoleByName" resultMap="RoleMap">
+        SELECT role_id, name,  remark, update_time, create_time from mcs_role where name = #{name}
+    </select>
+
+    <insert id="insert" parameterType="com.upotv.mcs.role.entity.RoleVo">
+        insert into mcs_role (name,remark,update_time,create_time) values (#{name},#{remark},now(),now())
+    </insert>
+
+    <update id="update" parameterType="com.upotv.mcs.role.entity.RoleVo">
+        update mcs_role
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = now()
+        </set>
+        where role_id = #{roleid}
+    </update>
+
+    <delete id="delete" parameterType="int">
+        DELETE from mcs_role where role_id = #{roleid}
+    </delete>
+
+
+    <!--用户菜单-->
+    <resultMap id="MenuMap" type="com.upotv.mcs.role.entity.Menu">
+        <result property="menuId" column="menu_id"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="isEnable" column="is_enable"/>
+        <result property="isAdmin" column="is_admin"/>
+    </resultMap>
+
+    <select id="getMenuList" resultMap="MenuMap">
+        SELECT * FROM mcs_menu WHERE  parent_id=#{0} ORDER BY priority
+    </select>
+
+    <select id="getMenuPriv" resultType="com.upotv.mcs.role.entity.MenuPriv">
+        SELECT CONCAT(priv.menu_id,'-',priv.priv_id)id,priv_name NAME ,  CASE WHEN per.id IS NULL THEN 0 ELSE 1 END checked FROM `mcs_menu_priv` priv
+        LEFT JOIN (select * From `mcs_permission` where `role_id` = #{0} group by menu_id,priv) per ON priv.`menu_id` = per.`menu_id` AND priv.`priv_id` = per.`priv`
+        where priv.menu_id = #{1}
+    </select>
+
+    <delete id="deletePermission">
+        DELETE  from mcs_permission where role_id = #{roleId}
+    </delete>
+
+    <insert id="insertPermission" parameterType="list">
+        REPLACE into mcs_permission (menu_id,role_id,priv,create_time) values
+        <foreach collection="list" item="item" index="index"  open="" separator="," close="">
+        (
+            #{item.menuId},
+            #{item.roleId},
+            #{item.menuPriv},
+            now()
+        )
+        </foreach>
+    </insert>
+
+</mapper>

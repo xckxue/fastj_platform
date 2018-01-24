@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.upotv.mcs.operlog.dao.LogDao">
+
+    <resultMap id="LogMap" type="com.upotv.mcs.operlog.entity.Log">
+        <result property="logid" column="logid"/>
+        <result property="username" column="username"/>
+        <result property="path" column="path"/>
+        <result property="param" column="param"/>
+        <result property="ip" column="ip"/>
+        <result property="duration" column="duration"/>
+        <result property="status" column="status"/>
+        <result property="remark" column="remark"/>
+        <result property="createtime" column="createtime"/>
+    </resultMap>
+
+    <select id="getLogListPage" resultMap="LogMap">
+        SELECT * FROM mcs_log <include refid="logListPageWhere"/> order by logid DESC
+    </select>
+
+    <sql id="logListPageWhere">
+        where 1=1
+        <if test="username != null and  username!= ''"> and username = #{username} </if>
+        <if test="status != null and status != ''"> AND status = #{status} </if>
+        <if test="path != null and path != ''"> AND path like '%${path}%' </if>
+        <if test="startTime != null and startTime != ''"> AND createtime >= #{startTime} </if>
+        <if test="endTime != null and endTime != ''"> AND createtime &lt;= #{endTime} </if>
+    </sql>
+
+    <insert id="insert" parameterType="com.upotv.mcs.operlog.entity.Log">
+        INSERT INTO mcs_log (username, path, param, ip,duration, status, remark, createtime)
+        VALUES (#{username}, #{path}, #{param}, #{ip},#{duration}, #{status}, #{remark}, now())
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM `mcs_log` WHERE DATE_SUB(CURDATE(), INTERVAL 30 day) >= createtime limit 100000
+    </delete>
+
+</mapper>

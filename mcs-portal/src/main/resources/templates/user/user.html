@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+
+<head th:include="head">
+    <title>集成播控平台V4</title>
+</head>
+<script type="text/javascript">
+
+    /*<![CDATA[*/
+    $(document).ready(function() {
+
+        //性别
+        var genderDict = [{codeId:"0",codeName:"女"},{codeId:"1",codeName:"男"}];
+
+        //是否锁定
+        var isLockDict = [{codeId:"0",codeName:"启用"},{codeId:"1",codeName:"禁用"}];
+
+        //是否管理员
+        var isAdminDict = [{codeId:"1",codeName:"是"},{codeId:"0",codeName:"否"}];
+
+        $('#user_dataList').datagrid({
+            fit : true,
+            toolbar:'#user_tb',
+            width:'100%',
+            height:'100%',
+            url:'/user/getUserListPage',
+            loadMsg:'数据加载中,请稍后……',
+            singleSelect: true,
+            autoRowHeight:false,
+            pagination: true,
+            nowrap:true,
+            striped: true,
+            rownumbers:true,
+            //fitColumns:true,
+            showFooter:true,
+            pageSize:20,
+            pageList:[20,30,50],
+            columns:[[
+                {field:'userId',hidden:true},
+                {field:'name',title:'用户姓名',align:'center', width:120},
+                {field:'phone',title:'手机号',align:'center', width:120},
+                {field:'email',title:'邮箱',align:'center', width:200},
+                {field:'gender',title:'性别',align:'center',width:80,
+                    formatter: function (value, row, index) {
+                        return upotv.biz.Dict.getValue(value,genderDict);
+                    }
+                },
+                {field:'isAdmin',title:'是否管理员',align:'center', width:120,
+                    formatter:function(value, row, index){
+                        return upotv.biz.Dict.getValue(value,isAdminDict);
+                    }
+                },
+                {field:'isLock',title:'是否启用',align:'center',width:120,
+                    formatter:function(value, row, index){
+                        return upotv.biz.Dict.getValue(value,isLockDict);
+                    }
+                },
+                {field:'updateTime',title:'更新时间',align:'center', width:200},
+                {field:'createTime',title:'创建时间',align:'center', width:200},
+                {field:'remark',title:'备注', width:500}
+            ]],
+            frozenColumns:[[
+                {field:'userName',title:'登录名',align:'center',width:120}
+            ]]
+        });
+
+        $("#user_gender").combobox({
+            valueField: 'codeId',
+            textField: 'codeName',
+            data:genderDict
+        });
+
+        $("#user_lock").combobox({
+            valueField: 'codeId',
+            textField: 'codeName',
+            data:isLockDict
+        });
+
+        $("#user_admin").combobox({
+            valueField: 'codeId',
+            textField: 'codeName',
+            data:isAdminDict
+        });
+
+        //新增用户
+        //默认为非管理员、账号为开启状态
+        $("#user_create_btn").click(function(){
+            $('#user_userName').textbox('textbox').attr('readonly',false);  //设置输入框为禁用
+            $("#user_form_password").css("display","block");
+
+            var $dialog = $('#user_dialog');
+            $dialog.dialog({
+                title:'创建用户',
+                modal: true,
+                closed: false,
+                width:450,
+                onClose : function() {
+                    $(this).form('clear');
+                },
+                buttons:[{
+                    text:'创建',
+                    iconCls:'icon-ok',
+                    handler:function(){
+                        $('#user_form').form('submit',{
+                            url:'user/create',
+                            onSubmit:function(){
+                                return $(this).form('enableValidation').form('validate');
+                            },
+                            success: function (data) {
+                                data = $.parseJSON(data);
+                                if(data.retnCode == '0000'){
+                                    $dialog.dialog('close');
+                                    $('#user_dataList').datagrid('reload');
+                                }else{
+                                    $.messager.alert('提示',data.retnMessage,'error');
+                                }
+                            }
+                        });
+                    }
+                },{
+                    text:'关闭',
+                    iconCls:'icon-no',
+                    handler:function(){
+                        $dialog.dialog('close');
+                    }
+                }]
+            });
+            $dialog.show();
+        });
+
+        //修改用户信息
+        $("#user_update_btn").click(function(){
+            var record = $('#user_dataList').datagrid('getSelected');
+            if(!record){
+                $.messager.alert('提示','请选择要修改的行!','info');
+                return false;
+            }
+            $("#user_form").form('load',record);
+            $('#user_userName').textbox('textbox').attr('readonly',true);  //设置输入框为禁用
+            $("#user_form_password").css("display","none");
+
+            var $dialog = $('#user_dialog');
+
+            $dialog.dialog({
+                title:'修改用户信息',
+                modal: true,
+                closed: false,
+                width:450,
+                onClose : function() {
+                    $(this).form('clear');
+                },
+                buttons:[{
+                    text:'保存',
+                    iconCls:'icon-ok',
+                    handler:function(){
+                        $.messager.progress({title:'正在执行'});
+                        $('#user_form').form('submit',{
+                            url:'user/update',
+                            onSubmit:function(param){
+                                var isValid = $(this).form('enableValidation').form('validate');
+                                if (!isValid){
+                                    $.messager.progress('close');	// hide progress bar while the form is invalid
+                                    return false;
+                                }
+                            },
+                            success: function (data) {
+                                data = $.parseJSON(data);
+                                if(data.retnCode == '0000'){
+                                    $dialog.dialog('close');
+                                    $('#user_dataList').datagrid('reload');
+                                }else{
+                                    $.messager.alert('提示',data.retnMessage,'error');
+                                }
+                                $.messager.progress('close');
+                            }
+                        });
+                    }
+                },{
+                    text:'关闭',
+                    iconCls:'icon-no',
+                    handler:function(){
+                        $dialog.dialog('close');
+                    }
+                }]
+            });
+            $dialog.show();
+        });
+
+        $("#user_del_btn").click(function(){
+            var record = $('#user_dataList').datagrid('getSelected');
+            if(!record){
+                $.messager.alert('提示','请选择要删除的行!','info');
+                return false;
+            }
+            if("admin" == record.userId){
+                $.messager.alert('提示','超级管理员用户不可删除','info');
+                return false;
+            }
+            $.messager.confirm('提示','确定要删除该用户吗?',function(result){
+                if (result){
+                    $.ajax({
+                        type: "POST",
+                        url: "user/delete",
+                        data:{userId:record.userId},
+                        success: function(msg){
+                            if(msg.retnCode == '0000'){
+                                $('#user_dataList').datagrid('reload');
+                            }else{
+                                $.messager.alert('提示',msg.retnMessage,'info');
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
+        $('#ss').searchbox({
+            width:300,
+            searcher:function(value,name){
+                var params = {};
+                if(name == 'name'){
+                    params = {name : value}
+                }else if(name == 'userName'){
+                    params = {userName : value}
+                }
+
+                $('#user_dataList').datagrid('load',params);
+            },
+            menu:'#mm',
+            prompt:'请输入...'
+        });
+
+        //设置角色
+        $("#user_relate_role_btn").click(function(){
+            var record = $('#user_dataList').datagrid('getSelected');
+            if(!record){
+                $.messager.alert('提示','请选择要设置的用户!','info');
+                return false;
+            }
+            var userId = record.userId;
+            var $dialog = $('#relateRole_dialog');
+            $dialog.dialog({});
+            $dialog.show();
+        });
+    });
+    /*]]>*/
+</script>
+<body>
+    <div class="easyui-layout" data-options="fit:true,border:false">
+        <div data-options="region:'center',fit:true,border:false">
+            <table id="user_dataList"></table>
+        </div>
+    </div>
+
+    <div id="user_tb" class="toolbar" style="display: none;">
+        <div class="tb_qry">
+            <input id="ss"/>
+            <div id="mm" style="width:120px">
+                <div data-options="name:'userName'">登陆名</div>
+                <div data-options="name:'name'">用户姓名</div>
+            </div>
+        </div>
+        <div class="tb_btn">
+            <a href="javascript:void(0)" class="easyui-linkbutton" plain="true" iconCls="icon-add" id="user_create_btn" shiro:hasPermission="user/manager">添加</a>
+            <a href="javascript:void(0)" class="easyui-linkbutton" plain="true" iconCls="icon-edit" id="user_update_btn" shiro:hasPermission="user/manager">修改</a>
+            <a href="javascript:void(0)" class="easyui-linkbutton" plain="true" iconCls="icon-remove" id="user_del_btn" shiro:hasPermission="user/manager">删除</a>
+            <a href="javascript:void(0)" class="easyui-linkbutton" plain="true" iconCls="icon-link" id="user_relate_role_btn" shiro:hasPermission="user/manager">关联角色</a>
+        </div>
+    </div>
+
+    <div id="user_dialog" class="dialog" data-options="modal:true">
+        <form id="user_form" method="post">
+            <div class="inp">
+                <div class="title">用户名</div>
+                <div class="text">
+                    <input id="user_userName" name="userName"  data-options="required:true"  class="easyui-textbox"/>
+                </div>
+            </div>
+            <div class="inp" id="user_form_password">
+                <div class="title">密码</div>
+                <div class="text">
+                    <input name="password" class="easyui-passwordbox" data-options="required:true"/>
+                </div>
+            </div>
+            <div class="inp">
+                <div class="title">姓名</div>
+                <div class="text">
+                    <input name="name" class="easyui-textbox" data-options="required:true" />
+                </div>
+            </div>
+            <div class="inp">
+                <div class="title">性别</div>
+                <div class="text">
+                    <select id="user_gender" name="gender"  data-options="required:true" class="easyui-combobox" panelHeight="auto"></select>
+                </div>
+            </div>
+            <div class="inp">
+                <div class="title">是否管理员</div>
+                <div class="text">
+                    <select id="user_admin" name="isAdmin"  data-options="required:true" class="easyui-combobox" panelHeight="auto"></select>
+                </div>
+            </div>
+            <div class="inp">
+                <div class="title">是否启用</div>
+                <div class="text">
+                    <select id="user_lock" name="isLock"  data-options="required:true" class="easyui-combobox" panelHeight="auto">
+                    </select>
+                </div>
+            </div>
+            <div class="inp">
+                <div class="title">Email</div>
+                <div class="text">
+                    <input name="email" class="easyui-textbox" data-options="prompt:'请输入Email...',validType:'email'"/>
+                </div>
+            </div>
+            <div class="inp">
+                <div class="title">手机号</div>
+                <div class="text">
+                    <input name="phone" class="easyui-textbox" />
+                </div>
+            </div>
+            <div class="inp">
+                <div class="title">备注</div>
+                <div class="text">
+                    <input name="remark" class="easyui-textbox"/>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!--关联用户角色dialog-->
+    <div id="relateRole_dialog" style="display:none;width:700px;height:400px;"
+         data-options="
+             title:'设置用户角色',
+             iconCls:'icon-save',
+             resizable:true,
+             modal:true,
+             href: 'user/toRelateRole'
+         ">
+    </div>
+</body>
+</html>
