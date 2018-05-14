@@ -11,6 +11,7 @@
     <modules>
         <module>mcs-common</module>
         <module>mcs-portal</module>
+        <module>mcs-test</module>
     </modules>
 
     <!-- Properties -->
