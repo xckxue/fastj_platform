@@ -33,10 +33,10 @@ public class BM25 {
      */
     Map<String, Integer>[] f;
 
-    /**
-     * 文档中中分词出现在全部文档的中的个数
-     */
-    Map<String, Integer> df;
+        /**
+         * 文档中中分词出现在全部文档的中的个数
+         */
+        Map<String, Integer> df;
 
     /**
      * IDF
@@ -46,7 +46,7 @@ public class BM25 {
     /**
      * 调节因子（正常为1.25-1.5）
      */
-    final static float k1 = 1.5f;
+    final static float k1 = 1.25f;
 
     /**
      * 调节因子
@@ -98,41 +98,52 @@ public class BM25 {
 
     public String sim(List<String> query, List<String> doc) {
 
-        List<String> allWords = Lists.newArrayList();
-        allWords.addAll(query);
-        allWords.addAll(doc);
-
-        Map<String, Integer> tf = new TreeMap<String, Integer>();
-        for (String word : allWords) {
-            Integer freq = tf.get(word);
+        Map<String, Integer> querytf = new TreeMap<String, Integer>();
+        for (String word : query) {
+            Integer freq = querytf.get(word);
             freq = (freq == null ? 0 : freq) + 1;
-            tf.put(word, freq);
+            querytf.put(word, freq);
+        }
+
+        Map<String, Integer> doctf = new TreeMap<String, Integer>();
+        for (String word : doc) {
+            Integer freq = doctf.get(word);
+            freq = (freq == null ? 0 : freq) + 1;
+            doctf.put(word, freq);
         }
 
         Map<String, String> map = Maps.newLinkedHashMap();
-        int allWordsCnt = allWords.size();
 
         StringBuilder sb = new StringBuilder();
         Map<String, BigDecimal> queryFreqMap = Maps.newLinkedHashMap();
         for (String word : query) {
-            int wf = tf.get(word);
-            double score = (idf.get(word) * wf * (k1 + 1) / (wf + k1 * (1 - b + b * allWordsCnt / avgdl)));
+            int wf = querytf.get(word);
+            int termdoc = df.get(word);
+            double idfv = idf.get(word);
+            double score = idfv * wf * (k1 + 1) / (wf + k1 * (1 - b + b * query.size() / avgdl));
             queryFreqMap.put(word,new BigDecimal(score).setScale(10,BigDecimal.ROUND_HALF_DOWN));
         }
+
+        BigDecimal totalScore1 = queryFreqMap.values().stream().reduce(BigDecimal.ZERO, (sum, item) -> sum.add(item));
+        queryFreqMap.entrySet().stream().collect(Collectors.toMap(entry -> entry.getKey(), entry -> BigDecimal.valueOf(100).multiply(entry.getValue()).divide(totalScore1, 3, BigDecimal.ROUND_HALF_DOWN)));
+
 
         sb.append(queryFreqMap).append("#");
 
         Map<String, BigDecimal> otherFreqMap = Maps.newLinkedHashMap();
         for (String word : doc) {
-            int wf = tf.get(word);
-            double score = (idf.get(word) * wf * (k1 + 1) / (wf + k1 * (1 - b + b * allWordsCnt / avgdl)));
+            int wf = doctf.get(word);
+            double score = (idf.get(word) * wf * (k1 + 1) / (wf + k1 * (1 - b + b * doc.size() / avgdl)));
             otherFreqMap.put(word,new BigDecimal(score).setScale(10,BigDecimal.ROUND_HALF_DOWN));
         }
+
+        BigDecimal totalScore2 = otherFreqMap.values().stream().reduce(BigDecimal.ZERO, (sum, item) -> sum.add(item));
+        otherFreqMap.entrySet().stream().collect(Collectors.toMap(entry -> entry.getKey(), entry -> BigDecimal.valueOf(100).multiply(entry.getValue()).divide(totalScore2, 3, BigDecimal.ROUND_HALF_DOWN)));
 
         sb.append(otherFreqMap).append("#");
 
         BigDecimal lawOfCosines = LawOfCosines.cal(queryFreqMap, otherFreqMap);
-        sb.append("lawOfCosines").append(lawOfCosines);
+        sb.append("lawOfCosines").append(lawOfCosines.toPlainString());
 
         return sb.toString();
     }

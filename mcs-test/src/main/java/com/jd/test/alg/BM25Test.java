@@ -45,30 +45,36 @@ public class BM25Test {
         }
         */
 
-        HSSFWorkbook workbook = new HSSFWorkbook(new FileInputStream(new File("E:/JDHotel.xls")));
+        HSSFWorkbook workbook = new HSSFWorkbook(new FileInputStream(new File("E:/JDHotel-all.xls")));
         HSSFSheet sheet = null;
         sheet = workbook.getSheetAt(0);
         List<List<String>> alllist = new ArrayList<>();
 
-        PrintWriter pw  = new PrintWriter(new File("e://bm25.txt"));
-
+        PrintWriter pw  = new PrintWriter(new File("e:/bm25-oto.txt"));
+        long a1 = System.currentTimeMillis();
         for (int j = 1; j < sheet.getLastRowNum() + 1; j++) {
             HSSFRow row = sheet.getRow(j);
             String hotelId = getValue(row.getCell(0));
             String hotelName = getValue(row.getCell(1));
-            List<String> termList = HanLP.segment(hotelName).stream().map(word -> word.word).collect(Collectors.toList());
+            //List<String> termList = HanLP.segment(hotelName).stream().map(word -> word.word).collect(Collectors.toList());
+            List<String> termList = WordUtil.splitStr2Words(hotelName);
             alllist.add(termList);
         }
+
+        long a2 = System.currentTimeMillis()-a1;
+        System.out.println("分词时间"+ a2);
         //初始化BM25
-        BM25 bm = new BM25(alllist);
+        com.hankcs.hanlp.summary.BM25 bm = new com.hankcs.hanlp.summary.BM25(alllist);
 
         //query词
-        String testStr = "北京双龙快捷酒店";
-        List<String> termList = HanLP.segment(testStr).stream().map(word -> word.word).collect(Collectors.toList());
-
-        for(List<String> list : alllist){
-            String msg = bm.sim(termList,list);
-            pw.println(msg);
+        String testStr = "北京呼家楼力行宾馆";
+        List<String> termList = WordUtil.splitStr2Words(testStr);
+        long b3 = System.currentTimeMillis();
+        double[] socres = bm.simAll(termList);
+        long a = System.currentTimeMillis()-b3;
+        System.out.println("查询京东距离时间"+ a);
+        for(double d : socres){
+            pw.println(d);
         }
         pw.flush();
 

@@ -2,6 +2,8 @@ package com.jd.test.alg;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import org.apache.commons.lang.StringUtils;
 
 import javax.sound.midi.Soundbank;
 import java.math.BigDecimal;
@@ -25,76 +27,41 @@ public class TFIDF {
      */
     Map<String, Integer>[] f;
 
-    /**
-     * IDF
-     */
-    Map<String, Double> idf;
+    Map<String, Integer> wordStatisticsCountMap = new TreeMap<String, Integer>();
 
     public TFIDF(List<List<String>> docs) {
         docCount = docs.size();
-        Map<String, Integer> df = new TreeMap<String, Integer>();
-        idf = new TreeMap<String, Double>();
-
         for (List<String> sentence : docs) {
-            for(String word : sentence){
-                Integer freq = df.get(word);
+            for (String word : sentence) {
+                Integer freq = wordStatisticsCountMap.get(word);
                 freq = (freq == null ? 0 : freq) + 1;
-                df.put(word, freq);
+                wordStatisticsCountMap.put(word, freq);
             }
         }
-        for (Map.Entry<String, Integer> entry : df.entrySet()) {
-            String word = entry.getKey();
-            Integer freq = entry.getValue();
-            //log(语料库中的文档总数/(包含该词的文档数+1))
-            idf.put(word, Math.log(docCount) / (freq + 1));
-        }
     }
 
-    /**
-     * 待比较的文档
-     * @param docs
-     * @return
-     */
-    public List<Map<String, BigDecimal>> sim(List<List<String>> docs) {
-        List<Map<String, BigDecimal>> maps = Lists.newArrayList();
 
-        for (List<String> doc : docs) {
-            Map<String, BigDecimal> docMap = Maps.newLinkedHashMap();
-            Map<String, Long> wordCountMap = doc.stream().collect(Collectors.groupingBy(text -> text, Collectors.counting()));
-
-            for(String word : doc){
-                Long wordCount = wordCountMap.get(word);
-                BigDecimal tfidf = (BigDecimal.valueOf(wordCount).divide(BigDecimal.valueOf(wordCount),3)).multiply(BigDecimal.valueOf(idf.get(word)));
-                docMap.put(word,tfidf);
-            }
-
-            BigDecimal totalScore = docMap.values().stream().reduce(BigDecimal.ZERO, (sum, item) -> sum.add(item));
-            docMap.entrySet().stream().collect(Collectors.toMap(entry -> entry.getKey(), entry -> BigDecimal.valueOf(100).multiply(entry.getValue()).divide(totalScore, 3, BigDecimal.ROUND_HALF_DOWN)));
-            maps.add(docMap);
-        }
-        return maps;
+    public Map<String, BigDecimal> sim(List<String> strWordsList) {
+        //酒店总行数
+        double doubleTotalSize = docCount;
+        //当前字符串词组总数
+        double strWordSize = strWordsList.size();
+        //当前词组在字符串中出现的次数map
+        Map<String, Long> strWordCountMap = strWordsList.stream()
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.groupingBy(text -> text, Collectors.counting()));
+        return Sets.newHashSet(strWordsList).stream()
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.toMap(word -> word, word -> {
+                    //词组在分词统计中的酒店个数
+                    int wordStatisticsCount = wordStatisticsCountMap.get(word) != null && wordStatisticsCountMap.get(word) > 0 ? wordStatisticsCountMap.get(word).intValue() : 0;
+                    //词组在匹配字符串出现的次数
+                    int strWordCount = strWordCountMap.get(word) != null ? strWordCountMap.get(word).intValue() : 0;
+                    //w=该词在该酒店名中出现的次数/该酒店名的词总数*log(该城市的酒店总数/(该城市存在该词的酒店总数+1))
+                    //doubleTotalSize / (wordStatisticsCount + 1) 小于 doubleTotalSize，不会越界
+                    double weight = (strWordCount / strWordSize) * (Math.log(doubleTotalSize / (wordStatisticsCount + 1)));
+                    return BigDecimal.valueOf(weight);
+                }, (a, b) -> a));
     }
 
-    public static void main(String[] args) {
-        BigDecimal bg=new BigDecimal("5.337817482448151E-4");
-        System.out.println(bg);
-    }
-
-    /*
-    public Map<String, Double> sim(List<String> sentence, int index) {
-        double score = 0;
-        Map<String, Double> maps = Maps.newHashMap();
-        for (String word : sentence) {
-            if (!f[index].containsKey(word)) {
-                continue;
-            }
-            int d = docs.get(index).size();
-            Integer wf = f[index].get(word);
-            double tfidf = (wf / d) * idf.get(word);
-            maps.put(word, tfidf);
-            score = score + tfidf;
-        }
-        return maps;
-    }
-    */
 }

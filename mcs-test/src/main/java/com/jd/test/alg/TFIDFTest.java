@@ -22,12 +22,12 @@ import java.util.stream.Collectors;
  */
 public class TFIDFTest {
     public static void main(String[] args) throws Exception {
-        HSSFWorkbook workbook = new HSSFWorkbook(new FileInputStream(new File("E:/JDHotel.xls")));
+        HSSFWorkbook workbook = new HSSFWorkbook(new FileInputStream(new File("E:/hotel/JDHotel.xls")));
         HSSFSheet sheet = null;
         sheet = workbook.getSheetAt(0);
         List<List<String>> alllist = new ArrayList<>();
 
-        PrintWriter pw  = new PrintWriter(new File("e://tfidf.txt"));
+        PrintWriter pw  = new PrintWriter(new File("e://hotel/tfidf.txt"));
 
         for (int j = 1; j < sheet.getLastRowNum() + 1; j++) {
             HSSFRow row = sheet.getRow(j);
@@ -41,18 +41,16 @@ public class TFIDFTest {
         TFIDF tfidf = new TFIDF(alllist);
 
         //query词
-        String testStr = "北京双龙快捷酒店";
+        String testStr = "北京双龙酒店";
         List<String> termList = HanLP.segment(testStr).stream().map(word -> word.word).collect(Collectors.toList());
-        List<List<String>> queryList = new ArrayList<>();
-        queryList.add(termList);
-        Map<String,BigDecimal> queryFreqMap = tfidf.sim(queryList).get(0);
+        Map<String,BigDecimal> queryFreqMap = tfidf.sim(termList);
 
         //待匹配文档的tfidf
-        List<Map<String,BigDecimal>> list = tfidf.sim(alllist);
-        for(Map<String,BigDecimal> otherFreqMap : list){
+        for(List<String> list : alllist){
+            Map<String,BigDecimal> otherFreqMap = tfidf.sim(list);
             BigDecimal lawOfCosines = LawOfCosines.cal(queryFreqMap, otherFreqMap);
 
-            StringBuilder sb = new StringBuilder("lawOfCosines:").append(lawOfCosines).append("##");
+            StringBuilder sb = new StringBuilder("lawOfCosines:").append(lawOfCosines.toPlainString()).append("#");
             for (String key : otherFreqMap.keySet()) {
                 sb.append(key).append(":").append(otherFreqMap.get(key)).append(";");
             }
